@@ -2,6 +2,7 @@
   "name": "back-on-screen-addon",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Back on Screen Stremio addon for movie rereleases and IMAX return catalogs.",
   "main": "dist/index.js",
   "scripts": {
