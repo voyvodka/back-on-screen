@@ -131,24 +131,25 @@ This project is configured for Render free tier deployment.
 
 > **Cold start:** Render free tier spins down after inactivity. The addon uses disk cache and bootstrap records to serve fast responses even on cold start.
 
-### Auto-deploy via GitHub Release
+Render auto-deploys on every push to `main`. No deploy hook needed — just push and Render picks it up.
 
-1. Add `RENDER_DEPLOY_HOOK_URL` as a GitHub repository secret (get the URL from Render dashboard).
-2. Tag a release:
+### Creating a Release
+
+Tag a version to create a GitHub Release with auto-generated notes:
 
 ```bash
 git tag v0.1.1
 git push origin v0.1.1
 ```
 
-3. The `release.yml` workflow builds, creates a GitHub Release, and pings the Render deploy hook.
+The `release.yml` workflow builds, verifies, and creates the GitHub Release automatically.
 
 ## CI / Release
 
 | Workflow | Trigger | Actions |
 |----------|---------|---------|
 | `ci.yml` | Push to `main`, PRs | `yarn install` + `yarn build` |
-| `release.yml` | Tags matching `v*` | Build + GitHub Release + optional Render deploy |
+| `release.yml` | Tags matching `v*` | Build + GitHub Release |
 
 ## Project Structure
 
