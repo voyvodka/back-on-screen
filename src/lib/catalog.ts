@@ -7,6 +7,7 @@ const statusDescriptionMap: Record<DerivedAvailability['statusText'], string> = 
   NOW: 'in theaters',
   SOON: 'coming soon',
   RECENT: 'recently ended',
+  ENDED: 'ended',
 };
 
 function getEndDate(release: ReleaseEvent): Date {
@@ -26,6 +27,15 @@ function isUpcoming(release: ReleaseEvent, now: Date): boolean {
 function isRecentlyEnded(release: ReleaseEvent, now: Date): boolean {
   const end = getEndDate(release);
   return now > end && now <= addDays(end, RECENT_RETENTION_DAYS);
+}
+
+function isEndedBeforeRecentWindow(release: ReleaseEvent, now: Date): boolean {
+  const end = getEndDate(release);
+  return now > addDays(end, RECENT_RETENTION_DAYS);
+}
+
+function isGlobalFallbackEligibleRelease(release: ReleaseEvent): boolean {
+  return release.country !== 'TR';
 }
 
 function pickEarliest(releases: ReleaseEvent[], field: 'startDate' | 'endDate'): ReleaseEvent {
@@ -69,7 +79,9 @@ function deriveAvailability(
     };
   }
 
-  const globalLive = relevant.filter((release) => isNowShowing(release, now));
+  const globalLive = relevant.filter(
+    (release) => isGlobalFallbackEligibleRelease(release) && isNowShowing(release, now)
+  );
   if (globalLive.length > 0) {
     const release = pickEarliest(globalLive, 'endDate');
     return {
@@ -95,7 +107,9 @@ function deriveAvailability(
     };
   }
 
-  const globalUpcoming = relevant.filter((release) => isUpcoming(release, now));
+  const globalUpcoming = relevant.filter(
+    (release) => isGlobalFallbackEligibleRelease(release) && isUpcoming(release, now)
+  );
   if (globalUpcoming.length > 0) {
     const release = pickEarliest(globalUpcoming, 'startDate');
     return {
@@ -123,7 +137,9 @@ function deriveAvailability(
     };
   }
 
-  const globalRecent = relevant.filter((release) => isRecentlyEnded(release, now));
+  const globalRecent = relevant.filter(
+    (release) => isGlobalFallbackEligibleRelease(release) && isRecentlyEnded(release, now)
+  );
   if (globalRecent.length > 0) {
     const release = pickLatest(globalRecent, 'endDate');
     return {
@@ -131,6 +147,51 @@ function deriveAvailability(
       label: 'GLOBAL',
       statusText: 'RECENT',
       sortTier: 5,
+      sortDate: release.endDate ?? release.startDate,
+      release,
+    };
+  }
+
+  return null;
+}
+
+function deriveEndedAvailability(
+  movie: MovieRecord,
+  catalogId: CatalogId,
+  country: string,
+  now: Date
+): DerivedAvailability | null {
+  const relevant = movie.releases.filter((release) => release.catalogIds.includes(catalogId));
+
+  if (relevant.length === 0) {
+    return null;
+  }
+
+  const countryEnded = relevant.filter(
+    (release) => release.country === country && isEndedBeforeRecentWindow(release, now)
+  );
+  if (countryEnded.length > 0) {
+    const release = pickLatest(countryEnded, 'endDate');
+    return {
+      kind: 'country-ended',
+      label: country,
+      statusText: 'ENDED',
+      sortTier: 6,
+      sortDate: release.endDate ?? release.startDate,
+      release,
+    };
+  }
+
+  const globalEnded = relevant.filter(
+    (release) => isGlobalFallbackEligibleRelease(release) && isEndedBeforeRecentWindow(release, now)
+  );
+  if (globalEnded.length > 0) {
+    const release = pickLatest(globalEnded, 'endDate');
+    return {
+      kind: 'global-ended',
+      label: 'GLOBAL',
+      statusText: 'ENDED',
+      sortTier: 7,
       sortDate: release.endDate ?? release.startDate,
       release,
     };
@@ -150,7 +211,12 @@ function compareCatalogItems(left: CatalogItem, right: CatalogItem): number {
     return leftIsMock ? 1 : -1;
   }
 
-  if (left.availability.statusText === 'RECENT' && right.availability.statusText === 'RECENT') {
+  const leftIsEndedKind =
+    left.availability.statusText === 'RECENT' || left.availability.statusText === 'ENDED';
+  const rightIsEndedKind =
+    right.availability.statusText === 'RECENT' || right.availability.statusText === 'ENDED';
+
+  if (leftIsEndedKind && rightIsEndedKind) {
     return right.availability.sortDate.localeCompare(left.availability.sortDate);
   }
 
@@ -179,29 +245,66 @@ function buildWindowLabel(release: ReleaseEvent): string {
 export async function getCatalogItems(
   catalogId: CatalogId,
   country: string,
-  now = new Date()
+  now = new Date(),
+  options?: {
+    includePast?: boolean;
+  }
 ): Promise<CatalogItem[]> {
+  const includePast = options?.includePast ?? false;
   const normalizedNow = startOfUtcDay(now);
   const movies = await getMovieRecords(normalizedNow);
 
-  return movies
+  const items = movies
     .map((movie) => ({
       movie,
       availability: deriveAvailability(movie, catalogId, country, normalizedNow),
     }))
     .filter((item): item is CatalogItem => item.availability !== null)
+    .filter((item) =>
+      includePast
+        ? true
+        : item.availability.statusText === 'NOW' || item.availability.statusText === 'SOON'
+    )
     .sort(compareCatalogItems);
+
+  if (!includePast) {
+    return items;
+  }
+
+  const listedIds = new Set(items.map((item) => item.movie.imdbId));
+  const endedItems = movies
+    .filter((movie) => !listedIds.has(movie.imdbId))
+    .map((movie) => ({
+      movie,
+      availability: deriveEndedAvailability(movie, catalogId, country, normalizedNow),
+    }))
+    .filter((item): item is CatalogItem => item.availability !== null)
+    .sort(compareCatalogItems);
+
+  items.push(...endedItems);
+
+  return items;
 }
 
 export function buildAvailabilityDescription(item: CatalogItem, selectedCountry: string): string {
   const statusText = statusDescriptionMap[item.availability.statusText];
   const selectedLabel =
-    item.availability.label === 'GLOBAL'
-      ? `No showings in the selected country; available globally ${statusText}.`
-      : `${selectedCountry}: ${statusText}.`;
+    item.availability.statusText === 'ENDED'
+      ? item.availability.label === 'GLOBAL'
+        ? `No current showings in the selected country; latest global run has ended.`
+        : `${selectedCountry}: ${statusText}.`
+      : item.availability.label === 'GLOBAL'
+        ? `No showings in the selected country; available globally ${statusText}.`
+        : `${selectedCountry}: ${statusText}.`;
+
+  const endedLabel =
+    item.availability.statusText === 'ENDED'
+      ? `Left theaters on ${formatDateValue(item.availability.release.endDate ?? item.availability.release.startDate)}.`
+      : '';
 
   return [
     selectedLabel,
+    endedLabel,
     buildWindowLabel(item.availability.release),
     buildSourceLabel(item),
     item.availability.release.note ?? '',

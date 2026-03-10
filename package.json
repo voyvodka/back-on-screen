@@ -1,6 +1,6 @@
 {
-  "name": "back-on-screen-addon",
-  "version": "0.1.0",
+  "name": "back-on-screen",
+  "version": "0.1.1",
   "private": true,
   "license": "MIT",
   "description": "Back on Screen Stremio addon for movie rereleases and IMAX return catalogs.",
@@ -11,15 +11,15 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.10",
     "cheerio": "^1.1.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "stremio-addon-sdk": "^1.6.10"
+    "stremio-addon-sdk": "^1.6.10",
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.13.10",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "tsx": "^4.19.3"
   }
 }

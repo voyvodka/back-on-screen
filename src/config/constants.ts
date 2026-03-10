@@ -1,4 +1,4 @@
-export const ADDON_ID = 'dev.backonscreen.catalogs';
+export const ADDON_ID = 'community.backonscreen';
 export const ADDON_NAME = 'Back on Screen';
 export const ADDON_DESCRIPTION =
   'Shows movie rereleases and official IMAX returns inside Stremio.';

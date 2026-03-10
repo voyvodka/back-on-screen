@@ -110,7 +110,7 @@ function buildMetaDescription(
 
 const builder = new addonBuilder({
   id: ADDON_ID,
-  version: '0.1.0',
+  version: '0.1.1',
   name: ADDON_NAME,
   description: ADDON_DESCRIPTION,
   resources: ['catalog', 'meta'],

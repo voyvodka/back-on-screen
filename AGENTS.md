@@ -135,6 +135,7 @@ curl http://127.0.0.1:7000/meta/movie/tt1392170.json
 ## UI / Content Notes
 - The configure page is intentionally custom and lightweight.
 - Preserve the current visual direction; avoid generic restyling.
+- Turkish UI strings must use correct Turkish characters and spelling (`Ö, Ü, Ğ, Ş, İ, Ç, ı, ğ, ş, ç, ö, ü`); do not use ASCII fallbacks like `Once`/`Yakinda` when the language is Turkish.
 - Catalog rows prefer direct lightweight poster URLs; do not depend on runtime badge rendering for Home/Board reliability.
 - Keep fallback-to-original-poster behavior intact.
 - Prefer lightweight catalog posters; Stremio catalog cards are more reliable with small static-like images.

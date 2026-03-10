@@ -99,25 +99,33 @@ function parseReleaseDate(monthToken: string, dayToken: string, publishedAt: Dat
   return toDateValue(candidate);
 }
 
+function cleanProgramTitle(rawTitle: string): string {
+  return rawTitle
+    .replace(/\(\d{4}\)/g, '')
+    .replace(/\bWeek\s+[A-Za-z0-9: ]+$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function extractDatedTitles(bodyHtml: string, publishedAt: Date): ArticleTitle[] {
-  const matches = bodyHtml.matchAll(
+  const htmlMatches = bodyHtml.matchAll(
     /(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*[\u2013\u2014-]\s*<i>([^<]+)<\/i>/gi
   );
   const titles: ArticleTitle[] = [];
 
-  for (const match of matches) {
+  for (const match of htmlMatches) {
     const fullMatch = match[0] ?? '';
     const monthTokenMatch = fullMatch.match(/^[A-Za-z]+/);
     const monthToken = monthTokenMatch?.[0];
     const dayToken = match[1];
-    const rawTitle = match[2];
+    const rawTitle = cleanProgramTitle(decodeHtmlText(match[2] ?? ''));
 
     if (!monthToken || !dayToken || !rawTitle) {
       continue;
     }
 
     const releaseDate = parseReleaseDate(monthToken, dayToken, publishedAt);
-    const title = decodeHtmlText(rawTitle);
+    const title = rawTitle;
 
     if (!releaseDate || !title) {
       continue;
@@ -125,6 +133,39 @@ function extractDatedTitles(bodyHtml: string, publishedAt: Date): ArticleTitle[]
 
     titles.push({
       title,
+      releaseDate,
+      sourceUrl: '',
+    });
+  }
+
+  if (titles.length > 0) {
+    return titles;
+  }
+
+  const bodyText = decodeHtmlText(bodyHtml);
+  const textMatches = bodyText.matchAll(
+    /(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*[\u2013\u2014-]\s*([^\n\.]{2,140}?)(?=(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}\s*[\u2013\u2014-]|$)/gi
+  );
+
+  for (const match of textMatches) {
+    const fullMatch = match[0] ?? '';
+    const monthTokenMatch = fullMatch.match(/^[A-Za-z]+/);
+    const monthToken = monthTokenMatch?.[0];
+    const dayToken = match[1];
+    const rawTitle = cleanProgramTitle(match[2] ?? '');
+
+    if (!monthToken || !dayToken || !rawTitle) {
+      continue;
+    }
+
+    const releaseDate = parseReleaseDate(monthToken, dayToken, publishedAt);
+
+    if (!releaseDate) {
+      continue;
+    }
+
+    titles.push({
+      title: rawTitle,
       releaseDate,
       sourceUrl: '',
     });

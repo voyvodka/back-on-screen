@@ -1,0 +1,47 @@
+export interface ConfigureLocale {
+  pageTitle: string;
+  heroBadge: string;
+  heroDescription: string;
+  totalMovies: string;
+  inTheaters: string;
+  comingSoon: string;
+  recentlyEnded: string;
+  selectCountry: string;
+  countryDescription: string;
+  loadingCatalog: string;
+  catalogRerelease: string;
+  catalogImax: string;
+  featureRereleaseTitle: string;
+  featureRereleaseDescription: string;
+  featureImaxTitle: string;
+  featureImaxDescription: string;
+  featureSmartTitle: string;
+  featureSmartDescription: string;
+  installTitle: string;
+  installDescription: string;
+  installButton: string;
+  viewManifest: string;
+  githubLabel: string;
+  copy: string;
+  copied: string;
+  footer: string;
+  moviesSuffix: string;
+  noMovies: string;
+  loadError: string;
+  badgeNow: string;
+  badgeSoon: string;
+  badgeRecent: string;
+  badgeEnded: string;
+  months: string[];
+  filterAll: string;
+  filterRerelease: string;
+  filterImax: string;
+  filterEnded: string;
+  catalogTagRerelease: string;
+  catalogTagImax: string;
+  catalogTagBoth: string;
+  dateRangeSeparator: string;
+  endedOnDate: string;
+}
+
+export type ConfigureLanguage = 'en' | 'tr' | 'de' | 'fr' | 'it' | 'es' | 'nl' | 'ja';

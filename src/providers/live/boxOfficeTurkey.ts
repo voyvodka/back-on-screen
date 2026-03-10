@@ -25,6 +25,8 @@ const MONTH_LOOKUP: Record<string, number> = {
 };
 const CALENDAR_FETCH_CONCURRENCY = 4;
 const DETAIL_FETCH_CONCURRENCY = 10;
+const CALENDAR_MONTH_LOOKBACK = 6;
+const CALENDAR_MONTH_LOOKAHEAD = 9;
 
 interface CalendarEntry {
   releaseDate: string;
@@ -50,7 +52,7 @@ function buildMonthUrls(now: Date): string[] {
   const urls: string[] = [];
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  for (let offset = -1; offset <= 9; offset += 1) {
+  for (let offset = -CALENDAR_MONTH_LOOKBACK; offset <= CALENDAR_MONTH_LOOKAHEAD; offset += 1) {
     const current = new Date(monthStart);
     current.setUTCMonth(current.getUTCMonth() + offset);
     const year = current.getUTCFullYear();
@@ -215,21 +217,32 @@ async function safeFetchMovieDetail(detailPath: string): Promise<DetailPayload |
   }
 }
 
+const DEFAULT_SHOWTIME_DAYS = 14;
+
 function buildReleaseEvent(
   releaseDate: string,
+  endDate: string | null,
   isNowShowing: boolean,
   source: string,
   sourceUrl: string,
   note?: string
 ): ReleaseEvent {
   const start = parseDate(releaseDate);
-  const end = isNowShowing ? addDays(startOfUtcDay(new Date()), 7) : addDays(start, 7);
+  let computedEnd: string;
+
+  if (isNowShowing) {
+    computedEnd = toDateValue(addDays(startOfUtcDay(new Date()), 7));
+  } else if (endDate) {
+    computedEnd = endDate;
+  } else {
+    computedEnd = toDateValue(addDays(start, DEFAULT_SHOWTIME_DAYS));
+  }
 
   return {
     catalogIds: ['rerelease'],
     country: 'TR',
     startDate: releaseDate,
-    endDate: toDateValue(end),
+    endDate: computedEnd,
     source,
     sourceKind: 'live',
     sourceUrl,
@@ -261,7 +274,23 @@ export async function getBoxOfficeTurkeyRecords(
   const nowDate = startOfUtcDay(now);
   const movies = new Map<string, MovieRecord>();
 
-  for (const entry of calendarEntries) {
+  // Sort calendar entries chronologically to derive endDate from next entry's date.
+  const sortedEntries = [...calendarEntries].sort((a, b) => a.releaseDate.localeCompare(b.releaseDate));
+
+  // Collect unique sorted release dates to compute endDate per film.
+  const allDates = uniqueBy(
+    sortedEntries.map((e) => e.releaseDate).sort(),
+    (d) => d
+  );
+
+  function findNextDate(releaseDate: string): string | null {
+    for (const d of allDates) {
+      if (d > releaseDate) return d;
+    }
+    return null;
+  }
+
+  for (const entry of sortedEntries) {
     const detail = detailMap.get(entry.detailPath);
     if (!detail) {
       continue;
@@ -279,6 +308,10 @@ export async function getBoxOfficeTurkeyRecords(
     const effectiveReleaseDate =
       showtimesVerified && parseDate(entry.releaseDate) > nowDate ? toDateValue(nowDate) : entry.releaseDate;
     const isNowShowing = showtimesVerified || (detail.locationCount > 0 && parseDate(effectiveReleaseDate) <= nowDate);
+
+    // Derive endDate from next calendar entry's start date.
+    const inferredEndDate = isNowShowing ? null : findNextDate(entry.releaseDate);
+
     const note = [
       paribuVerified ? 'Also listed on the Paribu IMAX page.' : undefined,
       showtimesVerified ? 'Actively listed on the Box Office Turkiye showtimes page.' : undefined,
@@ -287,6 +320,7 @@ export async function getBoxOfficeTurkeyRecords(
       .join(' ');
     const releaseEvent = buildReleaseEvent(
       effectiveReleaseDate,
+      inferredEndDate,
       isNowShowing,
       paribuVerified ? 'Box Office Turkiye + Paribu Cineverse IMAX' : 'Box Office Turkiye',
       detail.sourceUrl,

@@ -1,131 +1,210 @@
 # Back on Screen
 
-This Stremio v4.4 addon highlights movie rereleases in two catalogs:
+[![CI](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml)
 
-- `Back in Theaters`
-- `Returning to IMAX`
+A Stremio v4.4 addon that surfaces movie rereleases and IMAX returns as catalog rows on your Board and Discover screens.
 
-Country selection is configured through the addon settings. Catalog cards use lightweight direct poster URLs, while availability details appear in descriptions and on the detail page.
+**Catalogs:**
 
-## Current data flow
+- **Back in Theaters** — classic films returning to cinemas
+- **Returning to IMAX** — titles coming back to IMAX screens
 
-- TR live source: `Box Office Turkiye` + `Paribu Cineverse IMAX`
-- TR active-showing verification: `Box Office Turkiye / seanslar`
-- Global official source experiment: `PR Newswire / Regal`
-- Default behavior: live data, with disk cache and bootstrap records allowed on cold start
-- Optional fallback: `ENABLE_MOCK_FALLBACK=true`
+## Features
 
-Mock data is hidden in the default mode. If you want to see mock records during development, run:
+- Two dedicated Stremio catalog rows with live data
+- Country-aware filtering (TR data stays in TR, global data available everywhere)
+- Rich configure page with dark cinema theme, live catalog preview, and filter tabs
+- Localized UI in 8 languages (EN, TR, DE, FR, IT, ES, NL, JA) — auto-detected from country
+- Lightweight poster URLs for reliable Stremio catalog cards
+- Disk cache + bootstrap records for fast cold-start responses
+- Availability status indicators: NOW, SOON, ENDED
+- Deduplication across catalogs with combined tags
 
-```bash
-ENABLE_MOCK_FALLBACK=true yarn dev
-```
+## Data Sources
+
+| Region | Source | Purpose |
+|--------|--------|---------|
+| TR | Box Office Türkiye | Rerelease listings + showtime verification |
+| TR | Paribu Cineverse IMAX | IMAX return verification |
+| Global | PR Newswire / Regal | Official rerelease announcements |
+
+Mock data is available for development (`ENABLE_MOCK_FALLBACK=true`) but hidden by default.
 
 ## Requirements
 
-- Node.js
+- Node.js >= 20
 - Yarn
-- Stremio v4.4
+- Stremio v4.4 (for installation)
 
-## Development
+## Quick Start
 
 ```bash
+git clone https://github.com/Voyvodka/back-on-screen.git
+cd back-on-screen
 yarn install
 yarn dev
 ```
 
-The server exposes:
+Open `http://127.0.0.1:7000/configure` in your browser to preview catalogs and install the addon into Stremio.
 
-- Health: `http://127.0.0.1:7000/health`
-- Manifest: `http://127.0.0.1:7000/manifest.json`
-- Configure: `http://127.0.0.1:7000/configure`
-- Configure preview API: `http://127.0.0.1:7000/api/catalog-preview?country=TR`
-- Country-configured manifest: `http://127.0.0.1:7000/%7B%22country%22%3A%22TR%22%7D/manifest.json`
+## API Endpoints
 
-`yarn dev` watches files and restarts the server automatically.
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Redirects to `/configure` |
+| `GET /configure` | Configure page with country selection and catalog preview |
+| `GET /health` | Health check with cache and refresh state |
+| `GET /manifest.json` | Stremio addon manifest |
+| `GET /catalog/movie/rerelease.json` | Back in Theaters catalog |
+| `GET /catalog/movie/imax-returning.json` | Returning to IMAX catalog |
+| `GET /meta/movie/:id.json` | Movie detail metadata |
+| `GET /api/catalog-preview?country=TR` | JSON preview API for the configure page |
 
-## Production-like run
+Country-configured manifest example:
 
-```bash
-yarn build
-yarn start
 ```
-
-`yarn start` runs the compiled `dist/index.js` output.
-
-## Environment variables
-
-- `HOST`: defaults to `127.0.0.1`
-- `PORT`: defaults to `7000`
-- `BASE_URL`: external address used in configure and manifest links
-- `NODE_ENV`: `development` by default; cache timings differ in production
-- `ENABLE_MOCK_FALLBACK=true`: enables mock records if live data ends up empty
-
-## Install in Stremio
-
-### Method 1 - Recommended
-
-1. Keep `yarn dev` running.
-2. Open `http://127.0.0.1:7000/configure` in a browser.
-3. Choose a country. The configure page language follows the selected country (`TR` -> Turkish, others -> English).
-4. Click `Install in Stremio`.
-5. Confirm the installation in Stremio.
-
-The configure page also provides:
-
-- live catalog preview cards for the selected country
-- `View Manifest` shortcut
-- one-click manifest URL copy
-
-### Method 2 - Manual repository URL
-
-1. Open Stremio v4.4.
-2. Use the `Add-on Repository URL` field in the Add-ons section.
-3. For a quick test with the default country, add:
-
-```text
-http://127.0.0.1:7000/manifest.json
-```
-
-4. To pass the country directly in the URL, use:
-
-```text
 http://127.0.0.1:7000/%7B%22country%22%3A%22TR%22%7D/manifest.json
 ```
 
-## Where it appears in Stremio
+## Environment Variables
 
-1. After installation, open `Board` or `Discover`.
-2. You should see these rows:
-   - `Back in Theaters`
-   - `Returning to IMAX`
-3. Card descriptions and source links reflect the selected country or `GLOBAL` availability.
-4. Sorting works like this:
-   - first currently playing titles
-   - then upcoming titles
-   - then recently ended titles
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HOST` | `127.0.0.1` | Bind address |
+| `PORT` | `7000` | Bind port |
+| `BASE_URL` | `http://{HOST}:{PORT}` | Public URL used in manifest and configure links |
+| `NODE_ENV` | `development` | Controls cache durations (shorter in dev) |
+| `ENABLE_MOCK_FALLBACK` | `false` | Set to `true` to show mock records when live data is empty |
 
-By default the catalogs are live-data driven. Mock data only appears when `ENABLE_MOCK_FALLBACK=true` is enabled.
+For production deployments, set `BASE_URL` to your public URL:
 
-To protect cold-start responsiveness, the addon can serve disk cache and bootstrap live records first, then refresh live data in the background.
+```
+BASE_URL=https://your-service.onrender.com
+```
 
-`/health` returns more than a simple `ok` flag; it also includes basic cache and refresh state that is useful during operations.
+## Install in Stremio
 
-## Development notes
+### Configure Page (Recommended)
 
-- Mock data: `src/data/mockMovies.ts`
-- Live source collector: `src/providers/live/boxOfficeTurkey.ts`
-- IMAX verification helper: `src/providers/live/paribu.ts`
-- Global official-source helper: `src/providers/live/prNewswireRegal.ts`
-- Provider cache and merge flow: `src/providers/catalogData.ts`
-- Catalog sorting logic: `src/lib/catalog.ts`
-- Poster URL helper: `src/lib/posterBadge.ts`
-- Addon manifest and handlers: `src/addon.ts`
+1. Start the server (`yarn dev` or deploy to a host).
+2. Open `/configure` in a browser.
+3. Choose a country — the UI language switches automatically.
+4. Click **Install in Stremio**.
+5. Confirm in Stremio.
 
-## Next phase
+The configure page also provides live catalog preview cards, a manifest link, and one-click URL copy.
 
-The most likely next expansion is a personal row powered by an `IMDb` or `Trakt` list.
+### Manual URL
+
+Paste this into Stremio's **Add-on Repository URL** field:
+
+```
+http://127.0.0.1:7000/manifest.json
+```
+
+For a specific country:
+
+```
+http://127.0.0.1:7000/%7B%22country%22%3A%22TR%22%7D/manifest.json
+```
+
+## Build
+
+```bash
+yarn build    # TypeScript compilation
+yarn start    # Run compiled output (dist/index.js)
+```
+
+## Deployment (Render)
+
+This project is configured for Render free tier deployment.
+
+**Render settings:**
+
+| Setting | Value |
+|---------|-------|
+| Build Command | `yarn install && yarn build` |
+| Start Command | `yarn start` |
+| Environment | `NODE_ENV=production`, `BASE_URL=https://your-service.onrender.com` |
+
+> **Note:** `typescript`, `@types/node`, and `@types/express` are in `dependencies` (not `devDependencies`) because Render's production install skips dev deps.
+
+> **Cold start:** Render free tier spins down after inactivity. The addon uses disk cache and bootstrap records to serve fast responses even on cold start.
+
+### Auto-deploy via GitHub Release
+
+1. Add `RENDER_DEPLOY_HOOK_URL` as a GitHub repository secret (get the URL from Render dashboard).
+2. Tag a release:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+3. The `release.yml` workflow builds, creates a GitHub Release, and pings the Render deploy hook.
+
+## CI / Release
+
+| Workflow | Trigger | Actions |
+|----------|---------|---------|
+| `ci.yml` | Push to `main`, PRs | `yarn install` + `yarn build` |
+| `release.yml` | Tags matching `v*` | Build + GitHub Release + optional Render deploy |
+
+## Project Structure
+
+```
+src/
+├── index.ts                  # Express server, routes, API
+├── addon.ts                  # Stremio manifest and handlers
+├── config/
+│   ├── constants.ts          # Addon ID/name, env, cache timings
+│   └── countries.ts          # Country list, normalization
+├── configure/
+│   ├── page.ts               # Configure page builder
+│   └── i18n/                 # 8-language localization
+├── lib/
+│   ├── catalog.ts            # Availability, sorting, filtering
+│   ├── descriptions.ts       # Movie description builder
+│   └── posterBadge.ts        # Poster URL helper
+├── providers/
+│   ├── catalogData.ts        # Cache orchestration, merge logic
+│   ├── cinemeta.ts           # Cinemeta metadata fetch
+│   └── live/
+│       ├── boxOfficeTurkey.ts  # TR rerelease source
+│       ├── paribu.ts           # IMAX verification
+│       └── prNewswireRegal.ts  # Global rerelease source
+├── data/
+│   ├── bootstrapLiveMovies.ts  # Cold-start bootstrap records
+│   └── mockMovies.ts           # Development mock data
+├── types/
+│   └── domain.ts             # Shared domain types
+└── utils/
+    ├── http.ts               # Fetch helpers with timeouts
+    ├── text.ts               # Text utilities
+    └── date.ts               # Date helpers
+```
+
+## Troubleshooting
+
+**Catalogs not appearing on Stremio Board:**
+- Check cold catalog response time — Stremio may skip slow addons on Board.
+- Verify with `curl http://127.0.0.1:7000/catalog/movie/rerelease.json`.
+- Clear temp cache and restart if data seems stale.
+
+**Empty catalog responses:**
+- Check `/health` for cache and refresh state.
+- Verify the country parameter — TR data only appears for country=TR.
+- Try `ENABLE_MOCK_FALLBACK=true` to confirm the addon pipeline works.
+
+**Configure page not loading:**
+- Ensure the server is running and `BASE_URL` matches your access URL.
+- Open `/health` first to confirm the server is up.
+
+## Roadmap
+
+- SEO improvements for the configure page
+- Personal watchlist row powered by IMDb or Trakt lists
 
 ## License
 
-MIT. See `LICENSE`.
+[MIT](LICENSE)

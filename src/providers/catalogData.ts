@@ -6,6 +6,7 @@ import { bootstrapLiveMovies } from '../data/bootstrapLiveMovies';
 import { mockMovies } from '../data/mockMovies';
 import { ENABLE_MOCK_FALLBACK, PROVIDER_CACHE_TTL_MS, STALE_RECORD_MAX_AGE_MS } from '../config/constants';
 import { CATALOG_IDS, MovieRecord, ReleaseEvent } from '../types/domain';
+import { startOfUtcDay, toDateValue } from '../utils/date';
 import { uniqueBy } from '../utils/text';
 
 import { getBoxOfficeTurkeyRecords } from './live/boxOfficeTurkey';
@@ -153,6 +154,34 @@ function mergeMovieRecords(records: MovieRecord[]): MovieRecord[] {
   return Array.from(byImdb.values());
 }
 
+function getReleaseEndDateValue(release: ReleaseEvent): string {
+  return release.endDate ?? release.startDate;
+}
+
+function pickCarryoverEndedRecords(records: MovieRecord[], now: Date): MovieRecord[] {
+  const nowDateValue = toDateValue(startOfUtcDay(now));
+  const endedMovies: MovieRecord[] = [];
+
+  for (const movie of records) {
+    const endedReleases = movie.releases.filter((release) => {
+      const endDate = getReleaseEndDateValue(release);
+      return endDate < nowDateValue;
+    });
+
+    if (endedReleases.length > 0) {
+      endedMovies.push({
+        imdbId: movie.imdbId,
+        title: movie.title,
+        originalTitle: movie.originalTitle,
+        year: movie.year,
+        releases: endedReleases.map((release) => ({ ...release })),
+      });
+    }
+  }
+
+  return endedMovies;
+}
+
 function buildMockFallbackRecords(): MovieRecord[] {
   return mockMovies
     .map((movie) => ({
@@ -255,6 +284,7 @@ async function refreshMovieRecords(now: Date): Promise<MovieRecord[]> {
   }
 
   const liveRecords = [...liveLoad.turkeyRecords, ...liveLoad.prNewswireRegalRecords];
+  const carryoverEndedRecords = pickCarryoverEndedRecords(cachedRecords?.movies ?? [], now);
   runtimeStatus.lastLiveRecordCount = liveRecords.length;
   runtimeStatus.lastSourceBreakdown = {
     turkey: liveLoad.turkeyRecords.length,
@@ -265,9 +295,15 @@ async function refreshMovieRecords(now: Date): Promise<MovieRecord[]> {
   let movies: MovieRecord[];
 
   if (liveRecords.length > 0) {
-    movies = mergeMovieRecords(ENABLE_MOCK_FALLBACK ? [...liveRecords, ...fallbackRecords] : liveRecords);
+    movies = mergeMovieRecords(
+      ENABLE_MOCK_FALLBACK
+        ? [...liveRecords, ...carryoverEndedRecords, ...fallbackRecords]
+        : [...liveRecords, ...carryoverEndedRecords]
+    );
   } else {
-    movies = ENABLE_MOCK_FALLBACK ? buildMockRecords() : [];
+    movies = ENABLE_MOCK_FALLBACK
+      ? mergeMovieRecords([...carryoverEndedRecords, ...buildMockRecords()])
+      : mergeMovieRecords(carryoverEndedRecords);
   }
 
   if (movies.length === 0 && cachedRecords && cachedRecords.movies.length > 0 && canUseStaleRecords(cachedRecords.updatedAt)) {

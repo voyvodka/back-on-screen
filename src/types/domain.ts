@@ -27,12 +27,14 @@ export type AvailabilityKind =
   | 'country-soon'
   | 'global-soon'
   | 'country-recent'
-  | 'global-recent';
+  | 'global-recent'
+  | 'country-ended'
+  | 'global-ended';
 
 export interface DerivedAvailability {
   kind: AvailabilityKind;
   label: string;
-  statusText: 'NOW' | 'SOON' | 'RECENT';
+  statusText: 'NOW' | 'SOON' | 'RECENT' | 'ENDED';
   sortTier: number;
   sortDate: string;
   release: ReleaseEvent;
