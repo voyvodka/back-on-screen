@@ -75,7 +75,8 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
 
     .stats-bar{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;padding:24px 0;margin-bottom:8px}
     .stat{text-align:center}
-    .stat-value{font-size:28px;font-weight:700;line-height:1}
+    .stat-value{font-size:28px;font-weight:700;line-height:1;transition:opacity .3s ease}
+    .stat-value.loading{opacity:.4;animation:pulse 2s ease-in-out infinite}
     .stat-value.now{color:var(--green)}
     .stat-value.soon{color:var(--yellow)}
     .stat-value.recent{color:var(--blue)}
@@ -84,6 +85,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
 
     .filter-bar{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:24px}
     .filter-pill{padding:8px 18px;border-radius:999px;border:1px solid var(--border);background:var(--surface-raised);color:var(--text-secondary);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s ease;user-select:none}
+    .filter-pill.disabled{opacity:.4;pointer-events:none;cursor:default}
     .filter-pill:hover{border-color:var(--border-strong);color:var(--text)}
     .filter-pill.active{border-color:var(--accent);background:rgba(232,93,58,0.1);color:var(--accent)}
     .filter-pill .pill-count{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--surface);font-size:11px;font-weight:700;color:var(--text-secondary)}
@@ -174,20 +176,20 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
 
   <div class="container">
     <div class="stats-bar" id="stats-bar">
-      <div class="stat"><div class="stat-value" id="stat-total">-</div><div class="stat-label" id="stat-label-total">${locale.totalMovies}</div></div>
-      <div class="stat"><div class="stat-value now" id="stat-now">-</div><div class="stat-label" id="stat-label-now">${locale.inTheaters}</div></div>
-      <div class="stat"><div class="stat-value soon" id="stat-soon">-</div><div class="stat-label" id="stat-label-soon">${locale.comingSoon}</div></div>
-      <div class="stat"><div class="stat-value ended" id="stat-ended">-</div><div class="stat-label" id="stat-label-ended">${locale.recentlyEnded}</div></div>
+      <div class="stat"><div class="stat-value loading" id="stat-total">-</div><div class="stat-label" id="stat-label-total">${locale.totalMovies}</div></div>
+      <div class="stat"><div class="stat-value now loading" id="stat-now">-</div><div class="stat-label" id="stat-label-now">${locale.inTheaters}</div></div>
+      <div class="stat"><div class="stat-value soon loading" id="stat-soon">-</div><div class="stat-label" id="stat-label-soon">${locale.comingSoon}</div></div>
+      <div class="stat"><div class="stat-value ended loading" id="stat-ended">-</div><div class="stat-label" id="stat-label-ended">${locale.recentlyEnded}</div></div>
     </div>
   </div>
 
   <div class="container">
     <section id="catalog-preview">
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-pill active" data-filter="all" id="filter-all">${locale.filterAll} <span class="pill-count" id="count-all">0</span></button>
-        <button class="filter-pill" data-filter="rerelease" id="filter-rerelease">${locale.filterRerelease} <span class="pill-count" id="count-rerelease">0</span></button>
-        <button class="filter-pill" data-filter="imax-returning" id="filter-imax">${locale.filterImax} <span class="pill-count" id="count-imax">0</span></button>
-        <button class="filter-pill" data-filter="ended" id="filter-ended">${locale.filterEnded} <span class="pill-count" id="count-ended">0</span></button>
+        <button class="filter-pill active disabled" data-filter="all" id="filter-all">${locale.filterAll} <span class="pill-count" id="count-all">0</span></button>
+        <button class="filter-pill disabled" data-filter="rerelease" id="filter-rerelease">${locale.filterRerelease} <span class="pill-count" id="count-rerelease">0</span></button>
+        <button class="filter-pill disabled" data-filter="imax-returning" id="filter-imax">${locale.filterImax} <span class="pill-count" id="count-imax">0</span></button>
+        <button class="filter-pill disabled" data-filter="ended" id="filter-ended">${locale.filterEnded} <span class="pill-count" id="count-ended">0</span></button>
       </div>
       <div id="movie-grid-container">
         <div class="loading" id="loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span><span id="loading-label">${locale.loadingCatalog}</span></div>
@@ -228,6 +230,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
       var previewCache = {};
       var activeFilter = 'all';
       var allItems = [];
+      var isLoading = true;
 
       var grid = document.getElementById('country-grid');
       var gridContainer = document.getElementById('movie-grid-container');
@@ -431,7 +434,32 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
         return allItems;
       }
 
+      function setFilterPillsDisabled(disabled) {
+        var pills = document.querySelectorAll('.filter-pill');
+        for (var i = 0; i < pills.length; i++) {
+          pills[i].classList.toggle('disabled', disabled);
+        }
+      }
+
+      function showLoadingState() {
+        gridContainer.innerHTML = '<div class="loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span> ' + t('loadingCatalog') + '</div>';
+        statTotal.textContent = '-';
+        statNow.textContent = '-';
+        statSoon.textContent = '-';
+        statEnded.textContent = '-';
+        statTotal.classList.add('loading');
+        statNow.classList.add('loading');
+        statSoon.classList.add('loading');
+        statEnded.classList.add('loading');
+        setFilterPillsDisabled(true);
+      }
+
       function renderMovieGrid(animate) {
+        if (isLoading) {
+          showLoadingState();
+          return;
+        }
+
         var items = getFilteredItems();
 
         if (items.length === 0) {
@@ -594,6 +622,11 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
         statNow.textContent = countNow;
         statSoon.textContent = countSoon;
         statEnded.textContent = countEndedStat;
+        statTotal.classList.remove('loading');
+        statNow.classList.remove('loading');
+        statSoon.classList.remove('loading');
+        statEnded.classList.remove('loading');
+        setFilterPillsDisabled(false);
 
         updateFilterLabels();
         activeFilter = 'all';
@@ -608,21 +641,26 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
 
       function loadPreview() {
         if (previewCache[selectedCountry]) {
+          isLoading = false;
           renderPreview(previewCache[selectedCountry]);
           return;
         }
 
-        gridContainer.innerHTML = '<div class="loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span> ' + t('loadingCatalog') + '</div>';
+        isLoading = true;
+        allItems = [];
+        showLoadingState();
 
         fetch(base + '/api/catalog-preview?country=' + selectedCountry)
           .then(function(r) { return r.json(); })
           .then(function(data) {
             previewCache[selectedCountry] = data;
             if (data.country === selectedCountry) {
+              isLoading = false;
               renderPreview(data);
             }
           })
           .catch(function() {
+            isLoading = false;
             gridContainer.innerHTML = '<div class="empty-catalog">' + t('loadError') + '</div>';
           });
       }

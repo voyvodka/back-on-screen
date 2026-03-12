@@ -2,7 +2,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { bootstrapLiveMovies } from '../data/bootstrapLiveMovies';
 import { mockMovies } from '../data/mockMovies';
 import { ENABLE_MOCK_FALLBACK, PROVIDER_CACHE_TTL_MS, STALE_RECORD_MAX_AGE_MS } from '../config/constants';
 import { CATALOG_IDS, MovieRecord, ReleaseEvent } from '../types/domain';
@@ -20,7 +19,7 @@ interface CachedRecords {
 }
 
 interface CatalogRuntimeStatus {
-  cacheSource: 'memory' | 'disk' | 'bootstrap' | 'refresh' | 'stale' | 'empty';
+  cacheSource: 'memory' | 'disk' | 'refresh' | 'stale' | 'empty';
   cachedRecordCount: number;
   cacheUpdatedAt: number | null;
   refreshInFlight: boolean;
@@ -206,15 +205,6 @@ function buildMockRecords(): MovieRecord[] {
   }));
 }
 
-function buildBootstrapRecords(): MovieRecord[] {
-  return bootstrapLiveMovies.map((movie) => ({
-    ...movie,
-    releases: movie.releases.map((release) => ({
-      ...release,
-    })),
-  }));
-}
-
 async function loadLiveRecords(now: Date): Promise<LiveLoadResult> {
   const [paribuImaxTitles, prNewswireRegalRecords] = await Promise.all([
     getParibuImaxTitles().catch(() => new Set<string>()),
@@ -373,6 +363,7 @@ export async function getMovieRecords(now = new Date()): Promise<MovieRecord[]> 
     return cachedRecords.movies;
   }
 
+  // Try disk cache while waiting; still trigger live refresh.
   const diskCache = await readDiskCache();
 
   if (diskCache && diskCache.movies.length > 0) {
@@ -383,20 +374,7 @@ export async function getMovieRecords(now = new Date()): Promise<MovieRecord[]> 
     return diskCache.movies;
   }
 
-  const bootstrapMovies = buildBootstrapRecords();
-
-  if (bootstrapMovies.length > 0) {
-    cachedRecords = {
-      expiresAt: Date.now() + PROVIDER_CACHE_TTL_MS,
-      updatedAt: Date.now(),
-      movies: bootstrapMovies,
-    };
-
-    void scheduleRefresh(now);
-    updateCacheStatus('bootstrap', cachedRecords);
-    return bootstrapMovies;
-  }
-
+  // No memory or disk cache available — wait for live data.
   if (activeLoad) {
     return activeLoad;
   }

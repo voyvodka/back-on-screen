@@ -148,8 +148,8 @@ curl http://127.0.0.1:7000/meta/movie/tt1392170.json
 - Dev cache durations are shorter than production cache durations.
 - Persisted movie cache is stored in the OS temp directory.
 - If you suspect stale data, clear the temp cache file and restart the server.
-- The addon currently relies on a warm-cache strategy plus bootstrap live records to keep first catalog responses fast.
-- Keep bootstrap data in sync with known live records when it is intentionally used to protect Home/Board rendering.
+- On cold start (no memory or disk cache), the addon waits for live API responses before returning catalog data.
+- The configure page shows a loading state (animated stats, disabled filters, loading dots) while waiting for data.
 
 ## Files Worth Reading Before Changes
 - `src/addon.ts`
@@ -169,3 +169,51 @@ curl http://127.0.0.1:7000/meta/movie/tt1392170.json
 - For Home/Board regressions, validate a cold `catalog` request and a warm `catalog` request separately.
 - For poster changes, validate direct image responses with status code, size, and timing before relying on Stremio UI checks.
 - If you change live providers, confirm partial upstream failures still leave the addon usable from cache or bootstrap data.
+
+## Release And Deploy Rules
+
+### Versioning
+- Follow [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
+- Patch (`0.1.1` → `0.1.2`): bug fixes, UI tweaks, loading state improvements.
+- Minor (`0.1.2` → `0.2.0`): new features, new providers, new catalog types.
+- Major (`0.2.0` → `1.0.0`): breaking manifest changes, catalog ID renames, config schema changes.
+- Version must be updated in **three places** simultaneously:
+  1. `package.json` → `"version"`
+  2. `src/addon.ts` → `version` field inside `addonBuilder({})`
+  3. Git tag → `v{version}` (e.g. `v0.1.2`)
+- All three must match exactly.
+
+### Pre-Release Checklist
+1. Run `yarn build` — must pass with zero errors.
+2. Verify changed endpoints locally with `curl` (see Useful Manual Validation).
+3. If configure page changed, open `http://127.0.0.1:7000/configure` in a browser.
+4. If manifest or catalog behavior changed, verify in Stremio v4.4.
+5. Ensure no `.env`, credentials, or secrets are staged.
+
+### Release Steps
+```bash
+# 1. Update version in package.json and src/addon.ts
+# 2. Build
+yarn build
+# 3. Stage, commit
+git add -A
+git commit -m "feat: v0.X.Y — short description of changes"
+# 4. Tag
+git tag v0.X.Y
+# 5. Push commit and tag together
+git push origin main --follow-tags
+```
+
+### What Happens After Push
+- **CI workflow** (`.github/workflows/ci.yml`): runs `yarn build` on every push to `main`.
+- **Release workflow** (`.github/workflows/release.yml`): triggers on `v*` tags, creates a GitHub Release with auto-generated notes.
+- **Render**: auto-deploys from `main` branch on every push. No manual deploy hook needed.
+
+### Post-Deploy Verification
+```bash
+curl https://back-on-screen.onrender.com/health
+curl https://back-on-screen.onrender.com/manifest.json
+```
+- Confirm `version` in manifest matches the released version.
+- Confirm `catalog.cacheSource` in health response becomes `refresh` after live data loads.
+- Open `https://back-on-screen.onrender.com/configure` and verify UI.
