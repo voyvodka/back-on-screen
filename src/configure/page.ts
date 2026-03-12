@@ -1,5 +1,11 @@
 import { ADDON_NAME, ADDON_VERSION, BASE_URL } from '../config/constants';
-import { COUNTRY_FLAGS, COUNTRY_NAMES, COUNTRY_OPTIONS, SupportedCountry } from '../config/countries';
+import {
+  COUNTRY_NAMES,
+  COUNTRY_OPTIONS,
+  LANGUAGE_COUNTRY_DEFAULTS,
+  SupportedCountry,
+  getCountryFlagUrl,
+} from '../config/countries';
 
 import { CONFIGURE_LOCALES, COUNTRY_LANGUAGE_MAP, getLanguageForCountry, getLocale } from './i18n';
 
@@ -9,7 +15,7 @@ function buildCountryOptionsJson(): string {
     COUNTRY_OPTIONS.map((code) => ({
       code,
       name: COUNTRY_NAMES[code],
-      flag: COUNTRY_FLAGS[code],
+      flagUrl: getCountryFlagUrl(code),
     }))
   );
 }
@@ -71,7 +77,8 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
     .country-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s ease}
     .country-btn:hover{border-color:var(--border-strong);background:var(--surface-overlay)}
     .country-btn.active{border-color:var(--accent);background:rgba(232,93,58,0.08);color:var(--accent)}
-    .country-btn .flag{font-size:18px;line-height:1}
+    .country-btn .flag{width:18px;height:13px;object-fit:cover;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);flex:0 0 auto}
+    .country-btn .country-code{display:inline-block;line-height:1}
 
     .stats-bar{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;padding:24px 0;margin-bottom:8px}
     .stat{text-align:center}
@@ -226,9 +233,12 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
       var countries = ${buildCountryOptionsJson()};
       var locales = ${JSON.stringify(CONFIGURE_LOCALES)};
       var countryLanguageMap = ${JSON.stringify(COUNTRY_LANGUAGE_MAP)};
+      var languageCountryDefaults = ${JSON.stringify(LANGUAGE_COUNTRY_DEFAULTS)};
       var selectedCountry = ${JSON.stringify(selectedCountry)};
       var autoDetectCountry = ${JSON.stringify(autoDetectCountry)};
       var selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
+      var countryStorageKey = 'back-on-screen:selected-country';
+      var usingStoredCountry = false;
       var previewCache = {};
       var activeFilter = 'all';
       var allItems = [];
@@ -273,6 +283,72 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
         var active = locales[selectedLanguage] || locales.en;
         if (active && Object.prototype.hasOwnProperty.call(active, key)) return active[key];
         return locales.en[key] || key;
+      }
+
+      function normalizeCountryCode(value) {
+        if (typeof value !== 'string') return null;
+        var candidate = value.trim().toUpperCase();
+        for (var i = 0; i < countries.length; i++) {
+          if (countries[i].code === candidate) return candidate;
+        }
+        return null;
+      }
+
+      function getStoredCountry() {
+        try {
+          return normalizeCountryCode(window.localStorage.getItem(countryStorageKey));
+        } catch {
+          return null;
+        }
+      }
+
+      function persistCountry(country) {
+        try {
+          window.localStorage.setItem(countryStorageKey, country);
+        } catch {
+          return;
+        }
+      }
+
+      function getCountryFromLocale(locale) {
+        if (typeof locale !== 'string') return null;
+
+        var normalizedLocale = locale.trim().replace(/_/g, '-');
+        if (!normalizedLocale) return null;
+
+        var parts = normalizedLocale.split('-').filter(Boolean);
+
+        for (var i = parts.length - 1; i >= 1; i--) {
+          var region = parts[i].toUpperCase();
+          if (/^[A-Z]{2}$/.test(region)) {
+            var matchedRegion = normalizeCountryCode(region);
+            if (matchedRegion) return matchedRegion;
+          }
+        }
+
+        var language = parts[0].toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(languageCountryDefaults, language)) {
+          return languageCountryDefaults[language];
+        }
+
+        return null;
+      }
+
+      function detectCountryFromLocale() {
+        var languageList = [];
+
+        if (Array.isArray(navigator.languages)) {
+          languageList = navigator.languages;
+        } else if (typeof navigator.language === 'string') {
+          languageList = [navigator.language];
+        }
+
+        for (var i = 0; i < languageList.length; i++) {
+          var country = getCountryFromLocale(languageList[i]);
+          if (country) return country;
+        }
+
+        return null;
       }
 
       function encodeConfig(c) {
@@ -372,9 +448,15 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
         manifestText.textContent = mu;
       }
 
-      function applySelectedCountry(country) {
-        selectedCountry = country;
+      function applySelectedCountry(country, source) {
+        var normalizedCountry = normalizeCountryCode(country);
+        if (!normalizedCountry) return;
+
+        selectedCountry = normalizedCountry;
         selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
+        if (source === 'manual') {
+          persistCountry(selectedCountry);
+        }
         applyTranslations();
         renderCountryGrid();
         updateInstallLinks();
@@ -401,10 +483,30 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
         countries.forEach(function(c) {
           var btn = document.createElement('button');
           btn.className = 'country-btn' + (c.code === selectedCountry ? ' active' : '');
-          btn.innerHTML = '<span class="flag">' + c.flag + '</span>' + c.code;
           btn.title = c.name;
+
+          var flag = document.createElement('img');
+          flag.className = 'flag';
+          flag.src = c.flagUrl;
+          flag.alt = '';
+          flag.width = 18;
+          flag.height = 13;
+          flag.loading = 'lazy';
+          flag.decoding = 'async';
+          flag.setAttribute('aria-hidden', 'true');
+          flag.addEventListener('error', function() {
+            this.style.display = 'none';
+          });
+
+          var code = document.createElement('span');
+          code.className = 'country-code';
+          code.textContent = c.code;
+
+          btn.appendChild(flag);
+          btn.appendChild(code);
+
           btn.addEventListener('click', function() {
-            applySelectedCountry(c.code);
+            applySelectedCountry(c.code, 'manual');
             loadPreview();
             updatePageUrl();
           });
@@ -671,65 +773,40 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
           });
       }
 
-      function detectCountryFromBrowser() {
-        if (!autoDetectCountry || !navigator.geolocation) {
+      function resolveInitialCountry() {
+        if (!autoDetectCountry) {
           return Promise.resolve(selectedCountry);
         }
 
-        return new Promise(function(resolve) {
-          var settled = false;
-          var timeoutId = window.setTimeout(function() {
-            if (settled) return;
-            settled = true;
-            resolve(selectedCountry);
-          }, 2500);
+        if (usingStoredCountry) {
+          return Promise.resolve(selectedCountry);
+        }
 
-          function finish(country) {
-            if (settled) return;
-            settled = true;
-            window.clearTimeout(timeoutId);
-            resolve(country || selectedCountry);
-          }
+        var localeCountry = detectCountryFromLocale();
+        if (localeCountry) {
+          return Promise.resolve(localeCountry);
+        }
 
-          navigator.geolocation.getCurrentPosition(
-            function(position) {
-              var params = new URLSearchParams({
-                lat: String(position.coords.latitude),
-                lon: String(position.coords.longitude),
-              });
+        return Promise.resolve(selectedCountry);
+      }
 
-              fetch(base + '/api/detect-country?' + params.toString())
-                .then(function(r) {
-                  if (!r.ok) throw new Error('Country detection failed');
-                  return r.json();
-                })
-                .then(function(data) {
-                  finish(typeof data.country === 'string' ? data.country : selectedCountry);
-                })
-                .catch(function() {
-                  finish(selectedCountry);
-                });
-            },
-            function() {
-              finish(selectedCountry);
-            },
-            {
-              enableHighAccuracy: false,
-              timeout: 2500,
-              maximumAge: 1000 * 60 * 60,
-            }
-          );
-        });
+      if (autoDetectCountry) {
+        var storedCountry = getStoredCountry();
+        if (storedCountry) {
+          selectedCountry = storedCountry;
+          selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
+          usingStoredCountry = true;
+        }
       }
 
       applyTranslations();
       renderCountryGrid();
       updateInstallLinks();
 
-      detectCountryFromBrowser()
-        .then(function(detectedCountry) {
-          if (detectedCountry !== selectedCountry) {
-            applySelectedCountry(detectedCountry);
+      resolveInitialCountry()
+        .then(function(resolvedCountry) {
+          if (resolvedCountry !== selectedCountry) {
+            applySelectedCountry(resolvedCountry, 'auto');
           }
         })
         .finally(function() {

@@ -14,7 +14,7 @@ A Stremio v4.4 addon that surfaces movie rereleases and IMAX returns as catalog 
 - Two dedicated Stremio catalog rows with live data
 - Country-aware filtering (TR data stays in TR, global data available everywhere)
 - Rich configure page with dark cinema theme, live catalog preview, and filter tabs
-- First-open country auto-detection from browser location, with US/English fallback
+- First-open country auto-detection from browser language, with saved selection support and US/English fallback
 - Localized UI in 8 languages (EN, TR, DE, FR, IT, ES, NL, JA) — auto-detected from country
 - Lightweight poster URLs for reliable Stremio catalog cards
 - In-memory + disk cache for faster warm responses, with loading UI during cold starts
@@ -60,7 +60,6 @@ Open `http://127.0.0.1:7000/configure` in your browser to preview catalogs and i
 | `GET /catalog/movie/imax-returning.json` | BoS - IMAX catalog |
 | `GET /meta/movie/:id.json` | Movie detail metadata |
 | `GET /api/catalog-preview?country=TR` | JSON preview API for the configure page |
-| `GET /api/detect-country?lat=...&lon=...` | Reverse-geocoded country detection for configure autofill |
 
 Country-configured manifest example:
 
@@ -96,7 +95,7 @@ BASE_URL=https://your-service.onrender.com
 
 The configure page also provides live catalog preview cards, a manifest link, and one-click URL copy.
 
-On first open without a `country` query parameter, the page tries to detect the user's country from browser geolocation. If detection is unavailable, denied, or times out, it falls back to `US` and English.
+On first open without a `country` query parameter, the page tries to detect the user's country from the browser locale (`navigator.languages`, `navigator.language`, and `Accept-Language`). If nothing maps to a supported country, it falls back to `US` and English. Manual country changes are remembered for the next visit.
 
 ### Manual URL
 

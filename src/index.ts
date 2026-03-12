@@ -8,6 +8,7 @@ import { addonInterface } from './addon';
 import { BASE_URL, CATALOG_NAMES, HOST, PORT } from './config/constants';
 import {
   DEFAULT_CONFIGURE_COUNTRY,
+  detectCountryFromAcceptLanguage,
   normalizeCountry,
   SupportedCountry,
 } from './config/countries';
@@ -15,7 +16,6 @@ import { buildConfigurePage } from './configure/page';
 import { getCatalogItems } from './lib/catalog';
 import { getPosterFallbackUrl } from './lib/posterBadge';
 import { getCatalogStatus, getMovieRecords } from './providers/catalogData';
-import { detectCountryFromCoordinates } from './providers/locationCountry';
 import { CatalogId, CATALOG_IDS } from './types/domain';
 
 const app = express();
@@ -116,22 +116,12 @@ app.get('/api/catalog-preview', async (request, response) => {
   }
 });
 
-app.get('/api/detect-country', async (request, response) => {
-  const latitude = Number(request.query.lat);
-  const longitude = Number(request.query.lon);
-
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    response.status(400).json({ country: DEFAULT_CONFIGURE_COUNTRY });
-    return;
-  }
-
-  const country = await detectCountryFromCoordinates(latitude, longitude);
-  response.json({ country });
-});
-
 app.get('/configure', (request, response) => {
   const hasCountryQuery = typeof request.query.country === 'string';
-  const country = normalizeCountry(request.query.country, DEFAULT_CONFIGURE_COUNTRY);
+  const fallbackCountry = hasCountryQuery
+    ? DEFAULT_CONFIGURE_COUNTRY
+    : detectCountryFromAcceptLanguage(request.headers['accept-language'], DEFAULT_CONFIGURE_COUNTRY);
+  const country = normalizeCountry(request.query.country, fallbackCountry);
   response.type('html').send(buildConfigurePage(country, !hasCountryQuery));
 });
 

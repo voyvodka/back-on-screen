@@ -45,6 +45,16 @@ export const COUNTRY_FLAGS: Record<SupportedCountry, string> = {
   JP: '\u{1F1EF}\u{1F1F5}',
 };
 
+export const LANGUAGE_COUNTRY_DEFAULTS: Record<string, SupportedCountry> = {
+  tr: 'TR',
+  de: 'DE',
+  fr: 'FR',
+  it: 'IT',
+  es: 'ES',
+  nl: 'NL',
+  ja: 'JP',
+};
+
 const COUNTRY_SET = new Set<string>(COUNTRY_OPTIONS);
 
 export function normalizeCountry(value: unknown, fallback: SupportedCountry = DEFAULT_COUNTRY): SupportedCountry {
@@ -52,6 +62,64 @@ export function normalizeCountry(value: unknown, fallback: SupportedCountry = DE
 
   if (COUNTRY_SET.has(candidate)) {
     return candidate as SupportedCountry;
+  }
+
+  return fallback;
+}
+
+export function getCountryFlagUrl(country: SupportedCountry): string {
+  return `https://flagcdn.com/${country.toLowerCase()}.svg`;
+}
+
+export function getCountryFromLocale(value: unknown): SupportedCountry | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/_/g, '-');
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parts = normalized.split('-').filter(Boolean);
+
+  for (let index = parts.length - 1; index >= 1; index -= 1) {
+    const region = parts[index]?.toUpperCase();
+
+    if (region && /^[A-Z]{2}$/.test(region) && COUNTRY_SET.has(region)) {
+      return region as SupportedCountry;
+    }
+  }
+
+  const language = parts[0]?.toLowerCase();
+
+  if (language && Object.prototype.hasOwnProperty.call(LANGUAGE_COUNTRY_DEFAULTS, language)) {
+    return LANGUAGE_COUNTRY_DEFAULTS[language];
+  }
+
+  return null;
+}
+
+export function detectCountryFromAcceptLanguage(
+  value: unknown,
+  fallback: SupportedCountry = DEFAULT_CONFIGURE_COUNTRY
+): SupportedCountry {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const locales = value
+    .split(',')
+    .map((part) => part.split(';')[0]?.trim())
+    .filter((part): part is string => Boolean(part));
+
+  for (const locale of locales) {
+    const country = getCountryFromLocale(locale);
+
+    if (country) {
+      return country;
+    }
   }
 
   return fallback;
