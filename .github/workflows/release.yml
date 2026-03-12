@@ -24,4 +24,13 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body: |
+            ## Install
+            - Configure page: https://back-on-screen.onrender.com/configure
+            - Manifest URL: https://back-on-screen.onrender.com/manifest.json
+
+            ## Notes
+            - The auto-generated Source code archives are for self-hosting or development.
+            - A standalone `manifest.json` asset is not attached because this addon serves dynamic catalog and meta endpoints from the running app.
+            - For direct Stremio installation, use the hosted manifest URL above.
           generate_release_notes: true

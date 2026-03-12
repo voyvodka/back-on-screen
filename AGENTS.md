@@ -179,7 +179,7 @@ curl http://127.0.0.1:7000/meta/movie/tt1392170.json
 - Major (`0.2.0` → `1.0.0`): breaking manifest changes, catalog ID renames, config schema changes.
 - Version must be updated in **three places** simultaneously:
   1. `package.json` → `"version"`
-  2. `src/addon.ts` → `version` field inside `addonBuilder({})`
+  2. `src/config/constants.ts` → `ADDON_VERSION`
   3. Git tag → `v{version}` (e.g. `v0.1.2`)
 - All three must match exactly.
 
@@ -192,7 +192,7 @@ curl http://127.0.0.1:7000/meta/movie/tt1392170.json
 
 ### Release Steps
 ```bash
-# 1. Update version in package.json and src/addon.ts
+# 1. Update version in package.json and src/config/constants.ts
 # 2. Build
 yarn build
 # 3. Stage, commit

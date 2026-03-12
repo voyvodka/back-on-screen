@@ -6,6 +6,7 @@ import {
   ADDON_DESCRIPTION,
   ADDON_ID,
   ADDON_NAME,
+  ADDON_VERSION,
   CATALOG_CACHE_SECONDS,
   CATALOG_NAMES,
   RECENT_RETENTION_DAYS,
@@ -110,7 +111,7 @@ function buildMetaDescription(
 
 const builder = new addonBuilder({
   id: ADDON_ID,
-  version: '0.1.2',
+  version: ADDON_VERSION,
   name: ADDON_NAME,
   description: ADDON_DESCRIPTION,
   resources: ['catalog', 'meta'],

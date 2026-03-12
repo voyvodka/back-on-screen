@@ -1,5 +1,6 @@
 export const ADDON_ID = 'community.backonscreen';
 export const ADDON_NAME = 'Back on Screen';
+export const ADDON_VERSION = '0.1.3';
 export const ADDON_DESCRIPTION =
   'Shows movie rereleases and official IMAX returns inside Stremio.';
 
@@ -44,6 +45,6 @@ export const STALE_REVALIDATE_SECONDS = IS_DEV ? 3 : 60 * 60;
 export const STALE_ERROR_SECONDS = IS_DEV ? 3 : 60 * 60 * 24;
 
 export const CATALOG_NAMES = {
-  rerelease: 'Back in Theaters',
-  'imax-returning': 'Returning to IMAX',
+  rerelease: 'BoS - ReReleases',
+  'imax-returning': 'BoS - IMAX',
 } as const;

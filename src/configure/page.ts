@@ -1,4 +1,4 @@
-import { ADDON_NAME, BASE_URL } from '../config/constants';
+import { ADDON_NAME, ADDON_VERSION, BASE_URL } from '../config/constants';
 import { COUNTRY_FLAGS, COUNTRY_NAMES, COUNTRY_OPTIONS, SupportedCountry } from '../config/countries';
 
 import { CONFIGURE_LOCALES, COUNTRY_LANGUAGE_MAP, getLanguageForCountry, getLocale } from './i18n';
@@ -14,7 +14,7 @@ function buildCountryOptionsJson(): string {
   );
 }
 
-export function buildConfigurePage(selectedCountry: SupportedCountry): string {
+export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetectCountry = false): string {
   const selectedLanguage = getLanguageForCountry(selectedCountry);
   const locale = getLocale(selectedLanguage);
   const baseUrl = new URL(BASE_URL);
@@ -214,7 +214,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
     </div>
   </div>
 
-  <footer><div class="container"><span id="footer-label">${locale.footer.replace('{{addonName}}', ADDON_NAME)}</span><a id="footer-github" href="https://github.com/Voyvodka/back-on-screen" target="_blank">${locale.githubLabel}</a></div></footer>
+  <footer><div class="container"><span id="footer-label">${locale.footer.replace('{{addonName}}', ADDON_NAME).replace('{{addonVersion}}', ADDON_VERSION)}</span><a id="footer-github" href="https://github.com/Voyvodka/back-on-screen" target="_blank">${locale.githubLabel}</a></div></footer>
   <div class="copy-toast" id="copy-toast">${locale.copied}</div>
 
   <script>
@@ -222,10 +222,12 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
       var host = ${JSON.stringify(baseUrl.host)};
       var base = ${JSON.stringify(BASE_URL)};
       var addonName = ${JSON.stringify(ADDON_NAME)};
+      var addonVersion = ${JSON.stringify(ADDON_VERSION)};
       var countries = ${buildCountryOptionsJson()};
       var locales = ${JSON.stringify(CONFIGURE_LOCALES)};
       var countryLanguageMap = ${JSON.stringify(COUNTRY_LANGUAGE_MAP)};
       var selectedCountry = ${JSON.stringify(selectedCountry)};
+      var autoDetectCountry = ${JSON.stringify(autoDetectCountry)};
       var selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
       var previewCache = {};
       var activeFilter = 'all';
@@ -336,7 +338,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
         btnManifest.textContent = t('viewManifest');
         btnCopy.textContent = t('copy');
         toast.textContent = t('copied');
-        footerLabel.textContent = t('footer').replace('{{addonName}}', addonName);
+        footerLabel.textContent = t('footer').replace('{{addonName}}', addonName).replace('{{addonVersion}}', addonVersion);
         if (footerGithub) {
           footerGithub.textContent = t('githubLabel');
         }
@@ -370,6 +372,14 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
         manifestText.textContent = mu;
       }
 
+      function applySelectedCountry(country) {
+        selectedCountry = country;
+        selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
+        applyTranslations();
+        renderCountryGrid();
+        updateInstallLinks();
+      }
+
       btnCopy.addEventListener('click', function() {
         var text = manifestText.textContent;
         if (navigator.clipboard) {
@@ -394,11 +404,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
           btn.innerHTML = '<span class="flag">' + c.flag + '</span>' + c.code;
           btn.title = c.name;
           btn.addEventListener('click', function() {
-            selectedCountry = c.code;
-            selectedLanguage = countryLanguageMap[selectedCountry] || 'en';
-            applyTranslations();
-            renderCountryGrid();
-            updateInstallLinks();
+            applySelectedCountry(c.code);
             loadPreview();
             updatePageUrl();
           });
@@ -665,11 +671,71 @@ export function buildConfigurePage(selectedCountry: SupportedCountry): string {
           });
       }
 
+      function detectCountryFromBrowser() {
+        if (!autoDetectCountry || !navigator.geolocation) {
+          return Promise.resolve(selectedCountry);
+        }
+
+        return new Promise(function(resolve) {
+          var settled = false;
+          var timeoutId = window.setTimeout(function() {
+            if (settled) return;
+            settled = true;
+            resolve(selectedCountry);
+          }, 2500);
+
+          function finish(country) {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeoutId);
+            resolve(country || selectedCountry);
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            function(position) {
+              var params = new URLSearchParams({
+                lat: String(position.coords.latitude),
+                lon: String(position.coords.longitude),
+              });
+
+              fetch(base + '/api/detect-country?' + params.toString())
+                .then(function(r) {
+                  if (!r.ok) throw new Error('Country detection failed');
+                  return r.json();
+                })
+                .then(function(data) {
+                  finish(typeof data.country === 'string' ? data.country : selectedCountry);
+                })
+                .catch(function() {
+                  finish(selectedCountry);
+                });
+            },
+            function() {
+              finish(selectedCountry);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 2500,
+              maximumAge: 1000 * 60 * 60,
+            }
+          );
+        });
+      }
+
       applyTranslations();
       renderCountryGrid();
       updateInstallLinks();
-      loadPreview();
-      updatePageUrl();
+
+      detectCountryFromBrowser()
+        .then(function(detectedCountry) {
+          if (detectedCountry !== selectedCountry) {
+            applySelectedCountry(detectedCountry);
+          }
+        })
+        .finally(function() {
+          loadPreview();
+          updatePageUrl();
+        });
     })();
   </script>
 </body>

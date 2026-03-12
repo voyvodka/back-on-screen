@@ -14,6 +14,9 @@ export const COUNTRY_OPTIONS = [
 
 export type SupportedCountry = (typeof COUNTRY_OPTIONS)[number];
 
+export const DEFAULT_COUNTRY: SupportedCountry = 'TR';
+export const DEFAULT_CONFIGURE_COUNTRY: SupportedCountry = 'US';
+
 export const COUNTRY_NAMES: Record<SupportedCountry, string> = {
   TR: 'Turkey',
   US: 'United States',
@@ -44,12 +47,12 @@ export const COUNTRY_FLAGS: Record<SupportedCountry, string> = {
 
 const COUNTRY_SET = new Set<string>(COUNTRY_OPTIONS);
 
-export function normalizeCountry(value: unknown): SupportedCountry {
-  const candidate = typeof value === 'string' ? value.trim().toUpperCase() : 'TR';
+export function normalizeCountry(value: unknown, fallback: SupportedCountry = DEFAULT_COUNTRY): SupportedCountry {
+  const candidate = typeof value === 'string' ? value.trim().toUpperCase() : fallback;
 
   if (COUNTRY_SET.has(candidate)) {
     return candidate as SupportedCountry;
   }
 
-  return 'TR';
+  return fallback;
 }

@@ -6,11 +6,16 @@ import { getRouter } from 'stremio-addon-sdk';
 
 import { addonInterface } from './addon';
 import { BASE_URL, CATALOG_NAMES, HOST, PORT } from './config/constants';
-import { normalizeCountry, SupportedCountry } from './config/countries';
+import {
+  DEFAULT_CONFIGURE_COUNTRY,
+  normalizeCountry,
+  SupportedCountry,
+} from './config/countries';
 import { buildConfigurePage } from './configure/page';
 import { getCatalogItems } from './lib/catalog';
 import { getPosterFallbackUrl } from './lib/posterBadge';
 import { getCatalogStatus, getMovieRecords } from './providers/catalogData';
+import { detectCountryFromCoordinates } from './providers/locationCountry';
 import { CatalogId, CATALOG_IDS } from './types/domain';
 
 const app = express();
@@ -111,9 +116,23 @@ app.get('/api/catalog-preview', async (request, response) => {
   }
 });
 
+app.get('/api/detect-country', async (request, response) => {
+  const latitude = Number(request.query.lat);
+  const longitude = Number(request.query.lon);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    response.status(400).json({ country: DEFAULT_CONFIGURE_COUNTRY });
+    return;
+  }
+
+  const country = await detectCountryFromCoordinates(latitude, longitude);
+  response.json({ country });
+});
+
 app.get('/configure', (request, response) => {
-  const country = normalizeCountry(request.query.country);
-  response.type('html').send(buildConfigurePage(country));
+  const hasCountryQuery = typeof request.query.country === 'string';
+  const country = normalizeCountry(request.query.country, DEFAULT_CONFIGURE_COUNTRY);
+  response.type('html').send(buildConfigurePage(country, !hasCountryQuery));
 });
 
 // Redirect bare root to the configure page for browser visitors.
