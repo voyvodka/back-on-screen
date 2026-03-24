@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml)
 
-A Stremio v4.4 addon that surfaces movie rereleases and IMAX returns as catalog rows on your Board and Discover screens.
+A Stremio addon that surfaces movie rereleases and IMAX returns as catalog rows on your Board and Discover screens.
 
 **Catalogs:**
 
@@ -35,7 +35,7 @@ Mock data is available for development (`ENABLE_MOCK_FALLBACK=true`) but hidden 
 
 - Node.js >= 20
 - Yarn
-- Stremio v4.4 (for installation)
+- Stremio desktop app
 
 ## Quick Start
 

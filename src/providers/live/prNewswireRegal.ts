@@ -10,6 +10,7 @@ import { mapWithConcurrency, normalizeTitle, uniqueBy } from '../../utils/text';
 const PR_NEWSWIRE_BASE_URL = 'https://www.prnewswire.com';
 const SEARCH_URLS = [
   `${PR_NEWSWIRE_BASE_URL}/search/news/?keyword=return%20to%20Regal&pagesize=25`,
+  `${PR_NEWSWIRE_BASE_URL}/news/regal/`,
 ];
 const SEARCH_FETCH_CONCURRENCY = 1;
 const ARTICLE_FETCH_CONCURRENCY = 2;
@@ -108,17 +109,16 @@ function cleanProgramTitle(rawTitle: string): string {
 }
 
 function extractDatedTitles(bodyHtml: string, publishedAt: Date): ArticleTitle[] {
+  // Actual HTML format: <i>Mar 1 –</i><i>La La Land</i><i>(2016)</i>
   const htmlMatches = bodyHtml.matchAll(
-    /(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*[\u2013\u2014-]\s*<i>([^<]+)<\/i>/gi
+    /<i>((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}))[^<]*?[\u2013\u2014-][^<]*?<\/i>\s*<i>([^<(]+?)<\/i>/gi
   );
   const titles: ArticleTitle[] = [];
 
   for (const match of htmlMatches) {
-    const fullMatch = match[0] ?? '';
-    const monthTokenMatch = fullMatch.match(/^[A-Za-z]+/);
-    const monthToken = monthTokenMatch?.[0];
-    const dayToken = match[1];
-    const rawTitle = cleanProgramTitle(decodeHtmlText(match[2] ?? ''));
+    const monthToken = match[1]?.match(/^[A-Za-z]+/)?.[0];
+    const dayToken = match[2];
+    const rawTitle = cleanProgramTitle(decodeHtmlText(match[3] ?? ''));
 
     if (!monthToken || !dayToken || !rawTitle) {
       continue;
@@ -181,7 +181,7 @@ async function fetchSearchArticles(url: string): Promise<SearchArticle[]> {
 
   $('.row.newsCards[lang="en-US"]').each((_, element) => {
     const href = $(element)
-      .find('a.news-release[href*="/news-releases/"][href$=".html"]')
+      .find('a[href*="/news-releases/"][href$=".html"]')
       .first()
       .attr('href');
 

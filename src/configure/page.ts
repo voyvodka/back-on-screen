@@ -1,4 +1,5 @@
 import { ADDON_NAME, ADDON_VERSION, BASE_URL } from '../config/constants';
+import { LOGO_SVG } from '../assets/logo';
 import {
   COUNTRY_NAMES,
   COUNTRY_OPTIONS,
@@ -31,6 +32,12 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${locale.pageTitle}</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg"/>
+  <meta name="description" content="${locale.heroDescription}"/>
+  <meta property="og:title" content="${locale.pageTitle}"/>
+  <meta property="og:description" content="${locale.heroDescription}"/>
+  <meta property="og:image" content="${BASE_URL}/logo.svg"/>
+  <meta property="og:type" content="website"/>
   <style>
     :root {
       --bg: #0d0d0f;
@@ -58,6 +65,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
     html{scroll-behavior:smooth}
     body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
 
+    .hero-logo{width:72px;height:72px;border-radius:18px;margin-bottom:16px;display:inline-block}
     .hero{position:relative;overflow:hidden;padding:64px 24px 48px;text-align:center}
     .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,var(--accent-glow),transparent 70%);pointer-events:none}
     .hero-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:var(--surface-raised);border:1px solid var(--border-strong);font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--accent);margin-bottom:20px}
@@ -168,6 +176,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
 </head>
 <body>
   <header class="hero">
+    <div>${LOGO_SVG.replace('<svg ', '<svg class="hero-logo" ')}</div>
     <div class="hero-badge"><span class="dot"></span><span id="hero-badge-text">${locale.heroBadge}</span></div>
     <h1><span class="gradient">${ADDON_NAME}</span></h1>
     <p id="hero-description">${locale.heroDescription}</p>

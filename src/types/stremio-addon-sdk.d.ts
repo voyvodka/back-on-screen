@@ -21,6 +21,7 @@ declare module 'stremio-addon-sdk' {
     version: string;
     name: string;
     description?: string;
+    logo?: string;
     resources: string[];
     types: string[];
     idPrefixes?: string[];

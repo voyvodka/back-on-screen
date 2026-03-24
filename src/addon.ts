@@ -114,6 +114,7 @@ const builder = new addonBuilder({
   version: ADDON_VERSION,
   name: ADDON_NAME,
   description: ADDON_DESCRIPTION,
+  logo: `${BASE_URL}/logo.svg`,
   resources: ['catalog', 'meta'],
   types: ['movie'],
   idPrefixes: ['tt'],

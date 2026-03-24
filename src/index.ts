@@ -5,6 +5,7 @@ import express from 'express';
 import { getRouter } from 'stremio-addon-sdk';
 
 import { addonInterface } from './addon';
+import { LOGO_SVG } from './assets/logo';
 import { BASE_URL, CATALOG_NAMES, HOST, PORT } from './config/constants';
 import {
   DEFAULT_CONFIGURE_COUNTRY,
@@ -97,6 +98,12 @@ async function buildPreview(country: SupportedCountry): Promise<PreviewResponse>
     },
   };
 }
+
+app.get('/logo.svg', (_request, response) => {
+  response.setHeader('Content-Type', 'image/svg+xml');
+  response.setHeader('Cache-Control', 'public, max-age=86400');
+  response.send(LOGO_SVG);
+});
 
 app.get('/health', (_request, response) => {
   response.json({
