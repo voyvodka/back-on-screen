@@ -26,8 +26,8 @@ jobs:
         with:
           body: |
             ## Install
-            - Configure page: https://back-on-screen.onrender.com/configure
-            - Manifest URL: https://back-on-screen.onrender.com/manifest.json
+            - Configure page: https://bos.sametozkan.com.tr/configure
+            - Manifest URL: https://bos.sametozkan.com.tr/manifest.json
 
             ## Notes
             - The auto-generated Source code archives are for self-hosting or development.

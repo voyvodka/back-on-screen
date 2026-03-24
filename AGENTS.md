@@ -211,9 +211,9 @@ git push origin main --follow-tags
 
 ### Post-Deploy Verification
 ```bash
-curl https://back-on-screen.onrender.com/health
-curl https://back-on-screen.onrender.com/manifest.json
+curl https://bos.sametozkan.com.tr/health
+curl https://bos.sametozkan.com.tr/manifest.json
 ```
 - Confirm `version` in manifest matches the released version.
 - Confirm `catalog.cacheSource` in health response becomes `refresh` after live data loads.
-- Open `https://back-on-screen.onrender.com/configure` and verify UI.
+- Open `https://bos.sametozkan.com.tr/configure` and verify UI.

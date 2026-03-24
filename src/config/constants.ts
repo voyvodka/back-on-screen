@@ -1,6 +1,8 @@
+import pkg from '../../package.json';
+
 export const ADDON_ID = 'community.backonscreen';
 export const ADDON_NAME = 'Back on Screen';
-export const ADDON_VERSION = '0.1.4';
+export const ADDON_VERSION: string = pkg.version;
 export const ADDON_DESCRIPTION =
   'Shows movie rereleases and official IMAX returns inside Stremio.';
 
