@@ -1,6 +1,6 @@
 # Back on Screen
 
-[![CI](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/Voyvodka/back-on-screen/actions/workflows/ci.yml)
+[![CI](https://github.com/voyvodka/back-on-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/voyvodka/back-on-screen/actions/workflows/ci.yml)
 
 A Stremio addon that surfaces movie rereleases and IMAX returns as catalog rows on your Board and Discover screens.
 
@@ -40,7 +40,7 @@ Mock data is available for development (`ENABLE_MOCK_FALLBACK=true`) but hidden 
 ## Quick Start
 
 ```bash
-git clone https://github.com/Voyvodka/back-on-screen.git
+git clone https://github.com/voyvodka/back-on-screen.git
 cd back-on-screen
 yarn install
 yarn dev

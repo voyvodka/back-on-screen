@@ -230,7 +230,7 @@ export function buildConfigurePage(selectedCountry: SupportedCountry, autoDetect
     </div>
   </div>
 
-  <footer><div class="container"><span id="footer-label">${locale.footer.replace('{{addonName}}', ADDON_NAME).replace('{{addonVersion}}', ADDON_VERSION)}</span><a id="footer-github" href="https://github.com/Voyvodka/back-on-screen" target="_blank">${locale.githubLabel}</a></div></footer>
+  <footer><div class="container"><span id="footer-label">${locale.footer.replace('{{addonName}}', ADDON_NAME).replace('{{addonVersion}}', ADDON_VERSION)}</span><a id="footer-github" href="https://github.com/voyvodka/back-on-screen" target="_blank">${locale.githubLabel}</a></div></footer>
   <div class="copy-toast" id="copy-toast">${locale.copied}</div>
 
   <script>
