@@ -25,12 +25,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           body: |
-            ## Install
-            - Configure page: https://bos.sametozkan.com.tr/configure
-            - Manifest URL: https://bos.sametozkan.com.tr/manifest.json
-
             ## Notes
             - The auto-generated Source code archives are for self-hosting or development.
             - A standalone `manifest.json` asset is not attached because this addon serves dynamic catalog and meta endpoints from the running app.
-            - For direct Stremio installation, use the hosted manifest URL above.
+            - To install in Stremio, run the addon yourself and use `<your-host>/manifest.json`.
           generate_release_notes: true
