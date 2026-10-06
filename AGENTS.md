@@ -211,9 +211,9 @@ git push origin main --follow-tags
 
 ### Post-Deploy Verification
 ```bash
-curl https://bos.sametozkan.com.tr/health
-curl https://bos.sametozkan.com.tr/manifest.json
+curl "$BASE_URL/health"
+curl "$BASE_URL/manifest.json"
 ```
 - Confirm `version` in manifest matches the released version.
 - Confirm `catalog.cacheSource` in health response becomes `refresh` after live data loads.
-- Open `https://bos.sametozkan.com.tr/configure` and verify UI.
+- Open `$BASE_URL/configure` and verify UI.
